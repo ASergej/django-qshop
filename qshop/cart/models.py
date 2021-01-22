@@ -17,8 +17,7 @@ if qshop_settings.ENABLE_PAYMENTS:
         PAYMENT_CLASSES[item] = import_item(qshop_settings.PAYMENT_METHODS_CLASSES_PATHS[item])
 #Menu = import_item(MENUCLASS)
 
-
-class Cart(models.Model):
+class CartAbstract(models.Model):
     date_added = models.DateTimeField(_('creation date'), auto_now_add=True)
     date_modified = models.DateTimeField(_('modification date'), auto_now=True)
     checked_out = models.BooleanField(default=False, verbose_name=_('checked out'))
@@ -28,6 +27,7 @@ class Cart(models.Model):
         verbose_name = _('cart')
         verbose_name_plural = _('carts')
         ordering = ('-date_modified',)
+        abstract = True
 
     def __unicode__(self):
         return unicode(self.date_modified)
@@ -46,8 +46,8 @@ class ItemManager(models.Manager):
         return super(ItemManager, self).get(*args, **kwargs)
 
 
-class Item(models.Model):
-    cart = models.ForeignKey(Cart, verbose_name=_('cart'))
+class ItemAbstract(models.Model):
+    cart = models.ForeignKey('Cart', verbose_name=_('cart'))
     quantity = models.PositiveIntegerField(verbose_name=_('quantity'))
     unit_price = models.DecimalField(max_digits=12, decimal_places=2, verbose_name=_('unit price'))
     _real_product = models.ForeignKey(Product)
@@ -59,6 +59,7 @@ class Item(models.Model):
         verbose_name = _('item')
         verbose_name_plural = _('items')
         ordering = ('cart',)
+        abstract = True
 
     def __unicode__(self):
         return '%s - %s' % (self.quantity, self.unit_price)
@@ -101,7 +102,7 @@ class OrderAbstract(models.Model):
     date_added           = models.DateTimeField(_('date added'), auto_now_add=True)
     status               = models.PositiveSmallIntegerField(_('status'), choices=STATUSES, default=1)
     manager_comments     = models.TextField(_('manager comments'), blank=True)
-    cart                 = models.ForeignKey(Cart, verbose_name=_('cart'), editable=False)
+    cart                 = models.ForeignKey('Cart', verbose_name=_('cart'), editable=False)
     cart_text            = models.TextField(_('cart text'), editable=False)
 
     if qshop_settings.ENABLE_PAYMENTS:
@@ -180,4 +181,10 @@ class OrderAbstractDefault(OrderAbstract):
 
 
 class Order(import_item(qshop_settings.CART_ORDER_CLASS) if qshop_settings.CART_ORDER_CLASS else OrderAbstractDefault):
+    pass
+
+class Item(import_item(qshop_settings.ITEM_CLASS) if qshop_settings.ITEM_CLASS else ItemAbstract):
+    pass
+
+class Cart(import_item(qshop_settings.CART_CLASS) if qshop_settings.CART_CLASS else CartAbstract):
     pass
